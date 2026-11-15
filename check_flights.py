@@ -2,17 +2,15 @@ import os
 from datetime import datetime, timedelta
 import requests
 from fli.search import SearchDates
-from fli.models import DateSearchFilters, FlightSegment, Airport, SeatType, MaxStops
+from fli.models import DateSearchFilters, FlightSegment, Airport, SeatType, MaxStops, PassengerInfo
 
 WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
 
-# Target price in PLN (e.g., 150 PLN one-way)
+# Target max price in PLN
 MAX_PRICE_PLN = 500
-DAYS_AHEAD_TO_SCAN = 60  # Scans the next 2 months for the cheapest date
+DAYS_AHEAD_TO_SCAN = 60
 
-# All London airports serviced from Wroclaw (Ryanair uses STN/LTN, Wizz Air uses LGW/LTN, BA/LOT use LHR)
 LONDON_AIRPORTS = [Airport.STN, Airport.LTN, Airport.LGW, Airport.LHR]
-
 
 def send_discord_alert(airport_code, date_str, price_pln):
     if not WEBHOOK_URL:
@@ -40,7 +38,6 @@ def send_discord_alert(airport_code, date_str, price_pln):
     }
     requests.post(WEBHOOK_URL, json=payload, timeout=15)
 
-
 def main():
     start_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
     end_date = (datetime.now() + timedelta(days=DAYS_AHEAD_TO_SCAN)).strftime("%Y-%m-%d")
@@ -62,13 +59,13 @@ def main():
                 to_date=end_date,
                 seat_type=SeatType.ECONOMY,
                 stops=MaxStops.ANY,
+                passenger_info=PassengerInfo(adults=1),
             )
 
             results = search.search(filters)
             if not results:
                 continue
 
-            # Find the cheapest date for this specific London airport
             best_for_airport = min(results, key=lambda x: x.price)
             print(f"WRO -> {london_airport.name}: Best price {best_for_airport.price} on {best_for_airport.date}")
 
@@ -90,7 +87,6 @@ def main():
                 date_str=cheapest_overall["date"],
                 price_pln=cheapest_overall["price"],
             )
-
 
 if __name__ == "__main__":
     main()
