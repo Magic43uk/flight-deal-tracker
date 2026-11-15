@@ -25,10 +25,10 @@ def send_discord_alert(airport_code, date_str, price_pln):
     payload = {
         "embeds": [
             {
-                "title": f"✈️ Cheap Flight Found: WRO ➡️ {airport_code} (London)",
+                "title": f"✈️ Cheap Flight Found: WRO -> {airport_code} (London)",
                 "url": google_flights_link,
                 "description": (
-                    f"**Price:** {price_pln} PLN (Target: ≤ {MAX_PRICE_PLN} PLN)\n"
+                    f"**Price:** {price_pln} PLN (Target: <= {MAX_PRICE_PLN} PLN)\n"
                     f"**Date:** {date_str}\n"
                     f"**Destination Airport:** {airport_code}"
                 ),
@@ -36,7 +36,13 @@ def send_discord_alert(airport_code, date_str, price_pln):
             }
         ]
     }
-    requests.post(WEBHOOK_URL, json=payload, timeout=15)
+    
+    try:
+        response = requests.post(WEBHOOK_URL, json=payload, timeout=15)
+        print(f"Discord response status: {response.status_code}")
+        print(f"Discord response text: {response.text}")
+    except Exception as e:
+        print(f"Error sending Discord alert: {e}")
 
 def main():
     start_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
