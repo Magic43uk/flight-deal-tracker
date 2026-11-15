@@ -38,13 +38,7 @@ def send_discord_alert(airport_code, date_str, price_pln):
     }
     
     try:
-        response = requests.post(WEBHOOK_URL, json=payload, timeout=15)
-        print(f"Discord response status: {response.status_code}")
-        print(f"Discord response text: {response.text}")
-    except Exception as e:
-        print(f"Error sending Discord alert: {e}")
-
-def main():
+        def main():
     start_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
     end_date = (datetime.now() + timedelta(days=DAYS_AHEAD_TO_SCAN)).strftime("%Y-%m-%d")
 
@@ -75,10 +69,16 @@ def main():
             best_for_airport = min(results, key=lambda x: x.price)
             print(f"WRO -> {london_airport.name}: Best price {best_for_airport.price} on {best_for_airport.date}")
 
+            # Safe date cleanup
+            raw_date = best_for_airport.date
+            if isinstance(raw_date, (list, tuple)):
+                raw_date = raw_date[0]
+            date_str = raw_date.strftime("%Y-%m-%d") if hasattr(raw_date, "strftime") else str(raw_date)[:10]
+
             if cheapest_overall is None or best_for_airport.price < cheapest_overall["price"]:
                 cheapest_overall = {
                     "airport": london_airport.name,
-                    "date": best_for_airport.date[0] if isinstance(best_for_airport.date, list) else str(best_for_airport.date),
+                    "date": date_str,
                     "price": best_for_airport.price,
                 }
 
