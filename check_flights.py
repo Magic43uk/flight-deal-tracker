@@ -7,7 +7,7 @@ from fli.models import DateSearchFilters, FlightSegment, Airport, SeatType, MaxS
 WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
 
 # Target price in PLN (e.g., 150 PLN one-way)
-MAX_PRICE_PLN = 150
+MAX_PRICE_PLN = 500
 DAYS_AHEAD_TO_SCAN = 60  # Scans the next 2 months for the cheapest date
 
 # All London airports serviced from Wroclaw (Ryanair uses STN/LTN, Wizz Air uses LGW/LTN, BA/LOT use LHR)
