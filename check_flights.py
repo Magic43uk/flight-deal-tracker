@@ -1,10 +1,57 @@
-def main():
-    DAYS_AHEAD_TO_SCAN = 60
-    TRIP_LENGTH_DAYS = 7  # Change this to 4 or 7 depending on your preference!
+import os
+from datetime import datetime, timedelta
+import requests
+from fli.search import SearchDates
+from fli.models import DateSearchFilters, FlightSegment, Airport, SeatType, MaxStops, PassengerInfo
 
-    start_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
-    # Extend end_date so round-trip returns fit within the scanning window
-    end_date = (datetime.now() + timedelta(days=DAYS_AHEAD_TO_SCAN + TRIP_LENGTH_DAYS)).strftime("%Y-%m-%d")
+WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
+
+# Target max price in PLN
+MAX_PRICE_PLN = 500
+DAYS_AHEAD_TO_SCAN = 60
+TRIP_LENGTH_DAYS = 7  # Zmień tutaj na 4 lub 7 w zależności od preferencji!
+
+LONDON_AIRPORTS = [Airport.STN, Airport.LTN, Airport.LGW, Airport.LHR]
+
+def send_discord_alert(airport_code, date_str, price_pln):
+    if not WEBHOOK_URL:
+        print("Missing DISCORD_WEBHOOK_URL secret.")
+        return
+
+    google_flights_link = (
+        f"https://www.google.com/travel/flights?q=Round%20trip%20flights%20to%20{airport_code}"
+        f"%20from%20WRO%20on%20{date_str}%20for%20{TRIP_LENGTH_DAYS}%20days&curr=PLN"
+    )
+
+    payload = {
+        "embeds": [
+            {
+                "title": f"✈️ Round-Trip Deal: WRO <-> {airport_code} ({TRIP_LENGTH_DAYS} days)",
+                "url": google_flights_link,
+                "description": (
+                    f"**Price:** {price_pln} PLN (Target: <= {MAX_PRICE_PLN} PLN)\n"
+                    f"**Outbound Date:** {date_str}\n"
+                    f"**Trip Duration:** {TRIP_LENGTH_DAYS} days\n"
+                    f"**Destination Airport:** {airport_code}"
+                ),
+                "color": 5763719,
+            }
+        ]
+    }
+    
+    try:
+        response = requests.post(WEBHOOK_URL, json=payload, timeout=15)
+        print(f"Discord response status: {response.status_code}")
+        print(f"Discord response text: {response.text}")
+    except Exception as e:
+        print(f"Error sending Discord alert: {e}")
+
+def main():
+    start_dt = datetime.now() + timedelta(days=1)
+    end_dt = start_dt + timedelta(days=DAYS_AHEAD_TO_SCAN + TRIP_LENGTH_DAYS)
+
+    start_date_str = start_dt.strftime("%Y-%m-%d")
+    end_date_str = end_dt.strftime("%Y-%m-%d")
 
     search = SearchDates()
     cheapest_overall = None
@@ -13,35 +60,32 @@ def main():
         try:
             filters = DateSearchFilters(
                 flight_segments=[
-                    # 1. Outbound flight: WRO -> London
+                    # 1. Lot tam: WRO -> Londyn
                     FlightSegment(
                         departure_airport=[[Airport.WRO, 0]],
                         arrival_airport=[[london_airport, 0]],
-                        travel_date=start_date,
+                        travel_date=start_date_str,
                     ),
-                    # 2. Return flight: London -> WRO (Fixed trip length)
+                    # 2. Lot powrotny: Londyn -> WRO
                     FlightSegment(
                         departure_airport=[[london_airport, 0]],
                         arrival_airport=[[Airport.WRO, 0]],
-                        travel_date=start_date, # Google Flights matches this with trip duration filters/dates
+                        travel_date=start_date_str,
                     )
                 ],
-                from_date=start_date,
-                to_date=start_date + timedelta(days=DAYS_AHEAD_TO_SCAN) if isinstance(start_date, datetime) else end_date, # handled via date range
+                from_date=start_date_str,
+                to_date=end_date_str,
                 seat_type=SeatType.ECONOMY,
                 stops=MaxStops.ANY,
                 passenger_info=PassengerInfo(adults=1),
             )
 
-            # Note: For round trips, you can also specify trip duration if supported by the library, 
-            # or let Google Flights find combinations for the specified segments.
-            
             results = search.search(filters)
             if not results:
                 continue
 
             best_for_airport = min(results, key=lambda x: x.price)
-            print(f"WRO <-> {london_airport.name} ({TRIP_LENGTH_DAYS} days): Best price {best_for_airport.price}")
+            print(f"WRO <-> {london_airport.name}: Best price {best_for_airport.price} on {best_for_airport.date}")
 
             raw_date = best_for_airport.date
             if isinstance(raw_date, (list, tuple)):
@@ -49,20 +93,4 @@ def main():
             date_str = raw_date.strftime("%Y-%m-%d") if hasattr(raw_date, "strftime") else str(raw_date)[:10]
 
             if cheapest_overall is None or best_for_airport.price < cheapest_overall["price"]:
-                cheapest_overall = {
-                    "airport": london_airport.name,
-                    "date": date_str,
-                    "price": best_for_airport.price,
-                }
-
-        except Exception as e:
-            print(f"Error checking {london_airport.name}: {e}")
-
-    if cheapest_overall:
-        print(f"\n🏆 Cheapest round-trip: {cheapest_overall['price']} PLN to {cheapest_overall['airport']}")
-        if cheapest_overall["price"] <= MAX_PRICE_PLN:
-            send_discord_alert(
-                airport_code=cheapest_overall["airport"],
-                date_str=cheapest_overall["date"],
-                price_pln=cheapest_overall["price"],
-            )
+                cheapest_overall =
