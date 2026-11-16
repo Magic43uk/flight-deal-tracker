@@ -48,7 +48,7 @@ def send_discord_alert(airport_code, date_str, price_pln):
 
 def main():
     start_dt = datetime.now() + timedelta(days=1)
-    end_dt = start_dt + timedelta(days=DAYS_AHEAD_TO_SCAN + TRIP_LENGTH_DAYS)
+    end_dt = start_dt + timedelta(days=DAYS_AHEAD_TO_SCAN)
 
     start_date_str = start_dt.strftime("%Y-%m-%d")
     end_date_str = end_dt.strftime("%Y-%m-%d")
@@ -58,23 +58,16 @@ def main():
 
     for london_airport in LONDON_AIRPORTS:
         try:
-            # Dla każdego dnia w zakresie możemy wygenerować zapytanie lub pozwolić silnikowi przeszukać zakres
             filters = DateSearchFilters(
                 flight_segments=[
-                    # 1. Lot tam: WRO -> Londyn
                     FlightSegment(
                         departure_airport=[[Airport.WRO, 0]],
                         arrival_airport=[[london_airport, 0]],
                         travel_date=start_date_str,
-                    ),
-                    # 2. Lot powrotny: Londyn -> WRO (przesunięty o liczbę dni trwania wycieczki)
-                    FlightSegment(
-                        departure_airport=[[london_airport, 0]],
-                        arrival_airport=[[Airport.WRO, 0]],
-                        travel_date=(start_dt + timedelta(days=TRIP_LENGTH_DAYS)).strftime("%Y-%m-%d"),
                     )
                 ],
                 trip_type=TripType.ROUND_TRIP,
+                duration=TRIP_LENGTH_DAYS,
                 from_date=start_date_str,
                 to_date=end_date_str,
                 seat_type=SeatType.ECONOMY,
