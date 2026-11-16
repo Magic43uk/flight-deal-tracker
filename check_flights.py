@@ -93,4 +93,23 @@ def main():
             date_str = raw_date.strftime("%Y-%m-%d") if hasattr(raw_date, "strftime") else str(raw_date)[:10]
 
             if cheapest_overall is None or best_for_airport.price < cheapest_overall["price"]:
-                cheapest_overall =
+                cheapest_overall = {
+                    "airport": london_airport.name,
+                    "date": date_str,
+                    "price": best_for_airport.price,
+                }
+
+        except Exception as e:
+            print(f"Error checking {london_airport.name}: {e}")
+
+    if cheapest_overall:
+        print(f"\n🏆 Cheapest overall: {cheapest_overall['price']} on {cheapest_overall['date']} to {cheapest_overall['airport']}")
+        if cheapest_overall["price"] <= MAX_PRICE_PLN:
+            send_discord_alert(
+                airport_code=cheapest_overall["airport"],
+                date_str=cheapest_overall["date"],
+                price_pln=cheapest_overall["price"],
+            )
+
+if __name__ == "__main__":
+    main()
