@@ -2,7 +2,7 @@ import os
 from datetime import datetime, timedelta
 import requests
 from fli.search import SearchDates
-from fli.models import DateSearchFilters, FlightSegment, Airport, SeatType, MaxStops, PassengerInfo
+from fli.models import DateSearchFilters, FlightSegment, Airport, SeatType, MaxStops, PassengerInfo, TripType
 
 WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
 
@@ -58,6 +58,7 @@ def main():
 
     for london_airport in LONDON_AIRPORTS:
         try:
+            # Dla każdego dnia w zakresie możemy wygenerować zapytanie lub pozwolić silnikowi przeszukać zakres
             filters = DateSearchFilters(
                 flight_segments=[
                     # 1. Lot tam: WRO -> Londyn
@@ -66,13 +67,14 @@ def main():
                         arrival_airport=[[london_airport, 0]],
                         travel_date=start_date_str,
                     ),
-                    # 2. Lot powrotny: Londyn -> WRO
+                    # 2. Lot powrotny: Londyn -> WRO (przesunięty o liczbę dni trwania wycieczki)
                     FlightSegment(
                         departure_airport=[[london_airport, 0]],
                         arrival_airport=[[Airport.WRO, 0]],
-                        travel_date=start_date_str,
+                        travel_date=(start_dt + timedelta(days=TRIP_LENGTH_DAYS)).strftime("%Y-%m-%d"),
                     )
                 ],
+                trip_type=TripType.ROUND_TRIP,
                 from_date=start_date_str,
                 to_date=end_date_str,
                 seat_type=SeatType.ECONOMY,
